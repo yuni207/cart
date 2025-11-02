@@ -1,0 +1,92 @@
+services:
+  # ==============================
+  # PRODUCT SERVICE
+  # ==============================
+  product-service:
+    build:
+      context: ./product-service
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - DB_HOST=product-db
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_NAME=productdb
+    depends_on:
+      - product-db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3000 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  product-db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=productdb
+    volumes:
+      - product-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ==============================
+  # CART SERVICE
+  # ==============================
+  cart-service:
+    build:
+      context: ./cart-service
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3002"
+    environment:
+      - DB_CONNECTION=pgsql
+      - DB_HOST=cart-db
+      - DB_PORT=5432
+      - DB_DATABASE=cartdb
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - APP_ENV=docker
+    depends_on:
+      - cart-db
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3002 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    command: bash -c "php artisan migrate --force && php -S 0.0.0.0:3002 -t public"
+
+  # ==============================
+  # CART DATABASE
+  # ==============================
+  cart-db:
+    image: postgres:13
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=cartdb
+    volumes:
+      - cart-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "--host=cart-db", "--username=postgres", "--dbname=cartdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+# ==============================
+# VOLUMES
+# ==============================
+volumes:
+  product-db-data:
+  cart-db-data:
