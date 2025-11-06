@@ -65,9 +65,7 @@ services:
       start_period: 30s
     command: bash -c "php artisan migrate --force && php -S 0.0.0.0:3002 -t public"
 
-  # ==============================
-  # CART DATABASE
-  # ==============================
+
   cart-db:
     image: postgres:13
     restart: always
@@ -84,9 +82,38 @@ services:
       retries: 5
       start_period: 30s
 
-# ==============================
-# VOLUMES
-# ==============================
+  review-service:
+    build:
+      context: ./review-service
+      dockerfile: Dockerfile
+    ports:
+      - "3003:3003"
+    environment:
+      - MONGO_USER=root
+      - MONGO_PASSWORD=Dev@root23
+      - MONGO_HOST=review-db
+      - PRODUCT_SERVICE_URL=http://product-service:3000/products
+    depends_on:
+      - review-db
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.stats()"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 5s
+
+  review-db:
+    image: mongo:6.0
+    container_name: review-db
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: Dev@root23
+    volumes:
+      - review-db-data:/data/db
+      
 volumes:
   product-db-data:
   cart-db-data:
+  review-db-data:
